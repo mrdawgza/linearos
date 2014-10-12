@@ -817,8 +817,8 @@ Drawing = {
   end,
 
   WriteStringToBuffer = function (x, y, characters, textColour,bgColour)
-    for i = 1, #characters do
-        local character = characters:sub(i,i)
+    for i = 1, #tostring(characters) do
+        local character = tostring(characters):sub(i,i)
         Drawing.WriteToBuffer(x + i - 1, y, character, textColour, bgColour)
     end
   end,

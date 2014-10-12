@@ -37,47 +37,11 @@ local function settingsProgram()
   bCol(colors.white)
   clear(1,1)
   drawBar("Update","back")
-  pos(1,6)
+  pos(1,3)
   bCol(colors.white)
-  centerPrint("Checking for updates")
-  centerPrint("--------------------")
-  centerPrint("This may take a moment")
-  local latestVer = http.get("http://pastebin.com/raw.php?i=dvgiJFGA")
-  local verCarry = latestVer.readAll()
-  
-  if verCarry == "1.2" then
-    bCol(colors.white)
-	clear(1,1)
-	drawBar("Update","back")
-	pos(1,7)
-	bCol(colors.white)
-	centerPrint("LinearOS is up to date")
-	centerPrint("----------------------")
-   else
-    bCol(colors.white)
-	clear(1,1)
-	drawBar("Update to "..verCarry, "back")
-	pos(1,5)
-	bCol(colors.white)
-	centerPrint("Update Avaliable")
-	centerPrint("----------------")
-	print("")
-	bCol(colors.green)
-	cLine()
-	pos(1,8)
-	centerPrint("Install")
-	while true do
-     local event, button, x, y = os.pullEventRaw()
-     if event == "mouse_click" then
-      if x>1 and x<51 and y==8 and button==1 then
-        shell.run("linear/system/updater.ls")
-       elseif x>48 and x<52 and y==1 and button==1 then
-        settingsProgram()
-      else
-      end
-     end
-    end
-  end
+  print("Updates are not supported yet.")
+  print("")
+  print("Return")
   while true do
   local event, button, x, y = os.pullEventRaw()
   if event == "mouse_click" then
