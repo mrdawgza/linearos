@@ -183,42 +183,46 @@ if fs.exists("linear/system/desktopConfig.ls") then
   end
   
   local function step3()
-   clear(1,1)
-   tCol(colors.black)
-   centerPrint("Background")
-   print("")
-   tCol(colors.black)
-   centerPrint("Which background image do you want to use?")
-   print("")
+   if fs.exists("linear/userfolders/"..user.getCurrent().."/imgs/desktopBg.lsg") then
+    finish()
+   else
+    clear(1,1)
+    tCol(colors.black)
+    centerPrint("Background")
+    print("")
+    tCol(colors.black)
+    centerPrint("Which background image do you want to use?")
+    print("") 
 
-   bCol(colors.green)
-   pos(12,8)
-   print("          ")
-   pos(12,9)
-   print("  Custom  ")
-   pos(12,10)
-   print("          ")
+    bCol(colors.green)
+    pos(12,8)
+    print("          ")
+    pos(12,9)
+    print("  Custom  ")
+    pos(12,10)
+    print("          ")
 
-   bCol(colors.cyan)
-   pos(32,8)
-   print("          ")
-   pos(32,9)
-   print("  Default ")
-   pos(32,10)
-   print("          ")
-   tCol(colors.red)
-   while true do
-   local event, button, x, y = os.pullEventRaw()
-   if event == "mouse_click" then
-    if x>12 and x<22 and y>7 and y<11 and button==1 then
-	 shell.run("paint linear/userfolders/"..user.getCurrent().."/imgs/desktopBg.lsg")
-     finish()	 
-	elseif x>31 and x<42 and y>7 and y<11 and button ==1 then
-	 fs.copy("linear/system/imgs/defaultBg.lsg", "linear/userfolders/"..user.getCurrent().."/imgs/desktopBg.lsg")
-	 finish()
-	end
-   end
-   sleep(0.3)
+    bCol(colors.cyan)
+    pos(32,8)
+    print("          ")
+    pos(32,9)
+    print("  Default ")
+    pos(32,10)
+    print("          ")
+    tCol(colors.red)
+    while true do
+    local event, button, x, y = os.pullEventRaw()
+    if event == "mouse_click" then
+     if x>12 and x<22 and y>7 and y<11 and button==1 then
+ 	 shell.run("paint linear/userfolders/"..user.getCurrent().."/imgs/desktopBg.lsg")
+      finish()	  
+	 elseif x>31 and x<42 and y>7 and y<11 and button ==1 then
+	  fs.copy("linear/system/imgs/defaultBg.lsg", "linear/userfolders/"..user.getCurrent().."/imgs/desktopBg.lsg")
+	  finish()
+	 end
+    end
+    sleep(0.3)
+    end
    end
   end
   

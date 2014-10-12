@@ -8,8 +8,7 @@ terminal width 51
 terminal height 19
 --]]
 
-local oldPull = os.pullEvent;
-os.pullEvent = os.pullEventRaw;
+
 
 local function main()
 user.logOut()
@@ -212,4 +211,3 @@ end
 
 main()
 
-os.pullEvent = oldPull;
