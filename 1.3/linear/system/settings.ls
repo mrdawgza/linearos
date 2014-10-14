@@ -92,7 +92,7 @@ local function settingsProgram()
   local latestVersion = latestVersionRaw.readAll()
   latestVersionRaw.close()
   
-  if "1.2" == latestVersion then 
+  if "1.3" == latestVersion then 
 	clear(1,1)
 	drawBar("Update","back")
 	pos(1,5)
