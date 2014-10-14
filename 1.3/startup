@@ -1,0 +1,21 @@
+--[[ 
+   Linear Operating System
+        Startup File
+--]]
+
+local oldPull = os.pullEvent;
+os.pullEvent = os.pullEventRaw;
+
+term.clear()
+term.setCursorPos(1,1)
+
+version = "1.3"
+
+local bootImage = paintutils.loadImage("linear/system/imgs/bootScreen.lsg")
+paintutils.drawImage(bootImage, 2,1)
+
+sleep(0.5)
+
+shell.run("linear/system/loados.ls")
+
+os.pullEvent = oldPull;
