@@ -98,7 +98,7 @@ local function settingsProgram()
 	pos(1,5)
 	bCol(colors.white)
     centerPrint("LinearOS is up to date")
-	centerPrint("running v"..version)
+	centerPrint("running v"..latestVersion)
 	latestVersion = nil
    else 
     clear(1,1)
