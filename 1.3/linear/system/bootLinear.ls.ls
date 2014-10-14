@@ -1,1 +1,0 @@
-shell.run("linear/system/startup")
