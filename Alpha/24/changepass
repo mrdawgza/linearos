@@ -1,0 +1,21 @@
+accountLogo()
+
+print("You are about to change your password!")
+	sleep(0.2)	  
+		  local input1, input2
+		  repeat
+		  write("New password: ")
+		  input1 = read("*")
+		  write("Confirm password: ")
+		  input2 = read("*")
+		  until input1 == input2
+		  user.setPassword(input1)
+		  sleep(0.2)
+		  accountLogo()
+		  print("Successfully changed your password!")
+		  print("")
+		  print("Computer restart is required.")
+		  print("")
+		  print("Press any key to continue.")
+		  os.pullEvent("key")
+		  os.reboot()

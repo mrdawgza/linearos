@@ -1,0 +1,16 @@
+accountLogo()
+ 
+print("You are about to change your account name!")
+sleep(0.2)
+write("New name: ")
+local newname = read()
+
+user.setUsername(newname)
+
+print("Successfully changed your username to "..newname.."!")
+sleep(1)
+print("Computer restart is required!")
+print("")
+print("Press any key to continue.")
+os.pullEvent("key")
+os.reboot()

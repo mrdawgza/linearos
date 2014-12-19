@@ -1,0 +1,55 @@
+logo()
+--[Program menu list]--
+print("Programs")
+print("--------")
+print("1. Messenger[Not complete]")
+print("2. Games")
+print("")
+print("3. ^- Go back.")
+print("")
+write("Selection: ")
+
+input = read()
+if input == "1" then
+        logo()
+		print("The Messenger is still being coded! Snorry about that!")
+		print("If you know how to make one, PM OptimusSnorr on the")
+		print("ComputerCraft forums. I may need help.")
+		sleep(2)
+		shell.run("preal")
+		
+elseif input == "2" then 
+        logo()
+        print("Games")
+        print("-----")
+        print("1. Snake")
+        print("2. Adventure")
+        print("")
+        print("3. ^- Go back")
+        print("")
+        write("Selection: ")
+
+        input = read()
+        if input == "1" then
+		shell.run("worm")
+		shell.run("preal")
+
+        elseif input == "2" then 
+        shell.run("adventure")
+		shell.run("preal")
+
+        elseif input == "3" then 
+        shell.run("preal")
+        else
+        print("Invalid selection!")
+        sleep(1)
+		shell.run("preal")
+        end
+		
+elseif input == "3" then
+        shell.run("mainmenu")
+else
+        print("Invalid selection!")
+        sleep(1)
+        shell.run("preal")
+end

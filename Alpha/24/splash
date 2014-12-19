@@ -1,0 +1,32 @@
+logo()
+print("Login")
+print("-----")
+print("1. Login")
+print("2. Create an account")
+print("3. Shutdown")
+print("")
+write("Selection: ")
+
+input = read()
+
+if input == "2" then
+        shell.run("register")
+
+elseif input == "1" then 
+        shell.run("logon")
+		
+elseif input == "3" then 
+		term.clear()
+		term.setCursorPos(1,1)
+		print("Shutting down!")
+		sleep(2)
+		term.clear()
+		term.setCursorPos(1,1)
+		sleep(2)
+		os.shutdown()
+		
+else
+        print("Invalid selection!")
+		sleep(1)
+		shell.run("splash")
+end

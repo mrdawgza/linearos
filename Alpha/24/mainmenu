@@ -1,0 +1,55 @@
+logo() --Summons the title bar
+
+--[Main menu list]--
+
+print("Welcome, "..user.getCurrent().."!") --Welcomes the user
+print("")
+print("Main Menu") --The main menu list.
+print("---------")
+print("1. Programs")
+print("2. Options")
+print("3. Shutdown")
+print("4. Logoff")
+print("5. Sleep")
+print("")
+write("Selection: ")
+input = read()
+
+--[Local Functions]--
+
+local function mainprograms()
+  shell.run("preal")
+end
+
+local function runoptions()
+  shell.run("options")
+end
+
+local function runsleep()
+  shell.run("sleep")
+end
+
+--[Menu]--
+
+if input == "1" then
+        mainprograms()
+
+elseif input == "2" then 
+        runoptions()
+		
+elseif input == "3" then 
+        shutdown()
+
+elseif input == "4" then
+        logoff()
+
+elseif input == "5" then
+        runsleep()
+		
+else
+        print("Invalid selection!")
+        sleep(1)
+        shell.run("mainmenu")
+end
+
+--[mainmenu end]--

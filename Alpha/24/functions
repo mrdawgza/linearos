@@ -1,0 +1,66 @@
+--[Main Functions]--
+
+function shutdown()
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Securing your account...")
+  sleep(1)
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Shutting down!")
+  sleep(2)
+  term.clear()
+  term.setCursorPos(1,1)
+  sleep(2)
+  os.shutdown()
+end
+
+function logoff()
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Securing your account...")
+  sleep(1)
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Logging off!")
+  sleep(2)
+  term.clear()
+  term.setCursorPos(1,1)
+  user.logOut()
+  shell.run("splash")
+end
+
+function restart()
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Securing your account...")
+  sleep(1)
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Restarting...")
+  sleep(2)
+  term.clear()
+  term.setCursorPos(1,1)
+  sleep(1)	
+  os.reboot() 
+end 
+
+function logo()
+  term.clear()
+  term.setCursorPos(1,1)
+  print("////////////////////////////////////////////////rb3")
+  print("/Old Snorrful//////////////////////////////////////")
+  print("///////////////////////////////////////////////////")
+  print("")
+end
+
+function accountLogo()
+  term.clear()
+  term.setCursorPos(1,1)
+  print("///////////////////////////////////////////////////")
+  print("/Account///////////////////////////////////////////")
+  print("///////////////////////////////////////////////////")
+  print("")
+end
+
+shell.run("splash")

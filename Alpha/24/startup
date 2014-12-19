@@ -1,0 +1,200 @@
+
+--[Old Snorrful ComputerCraft Operating System]--
+                --[Startup]--
+				
+
+
+user = {}
+local file = fs.open("userList", "r")
+local userList = textutils.unserialize(file.readAll())
+file.close()
+
+local currentUser = false
+function user.getCurrent()
+ return currentUser
+end
+
+function shutdown()
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Securing your account...")
+  sleep(1)
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Shutting down!")
+  sleep(2)
+  term.clear()
+  term.setCursorPos(1,1)
+  sleep(2)
+  os.shutdown()
+end
+
+function logoff()
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Securing your account...")
+  sleep(1)
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Logging off!")
+  sleep(2)
+  term.clear()
+  term.setCursorPos(1,1)
+  user.logOut()
+  shell.run("splash")
+end
+
+function restart()
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Securing your account...")
+  sleep(1)
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Restarting...")
+  sleep(2)
+  term.clear()
+  term.setCursorPos(1,1)
+  sleep(1)	
+  os.reboot() 
+end 
+ 
+function user.logIn(username, password)
+ if currentUser then
+  return false
+ else
+  if userList[username] == password then
+   currentUser = username
+   return true
+  else
+   return false
+  end
+ end
+end
+
+function user.logOut()
+ if currentUser then
+  currentUser = false
+  return true
+ else
+  return false
+ end
+end
+
+local function saveUserList()
+ local file = fs.open("userList", "w")
+ file.write(textutils.serialize(userList))
+ file.close()
+end
+
+function saveUserList()
+local file = fs.open("userList", "w")
+ file.write(textutils.serialize(userList))
+ file.close()
+end
+
+function user.setUsername(username)
+ userList[username] = userList[currentUser]
+ userList[currentUser] = nil
+ saveUserList()
+ currentUser = username
+end
+
+function user.setPassword(password)
+ userList[currentUser] = password
+ saveUserList()
+end
+
+function user.listUsers()
+ local result = {}
+ for key in pairs(userList) do table.insert(result, key) end
+ return result
+end
+
+function user.register(username, password)
+ if userList[username] then
+  return false
+ else
+  userList[username] = password
+  saveUserList()
+  return true
+ end
+end
+
+function user.unregister(currentUser)
+ if userList[username] then
+  userList[username] = nil
+  saveUserList()
+  return true
+ else
+  return false
+ end
+end
+
+term.clear()
+term.setCursorPos(6,2)
+print("Loading Old Snorrful operating system..")
+sleep(2)
+term.setCursorPos(1,1)
+
+--[The loading bar]--
+
+print("---------------------------------------------------")
+print("|                                                 |")
+print("---------------------------------------------------")
+term.setCursorPos(1,1)
+
+sleep(0.2)
+
+print("---------------------------------------------------")
+print("|-----                                            |")
+print("---------------------------------------------------")
+term.setCursorPos(1,1)
+
+sleep(0.1)
+
+print("---------------------------------------------------")
+print("|----------------------                           |")
+print("---------------------------------------------------")
+term.setCursorPos(1,1)
+
+sleep(0.2)
+
+print("---------------------------------------------------")
+print("|--------------------------------                 |")
+print("---------------------------------------------------")
+term.setCursorPos(1,1)
+
+sleep(0.2)
+
+print("---------------------------------------------------")
+print("|-----------------------------------------        |")
+print("---------------------------------------------------")
+term.setCursorPos(1,1)
+
+sleep(0.2)
+
+print("---------------------------------------------------")
+print("|----------------------------------------------   |")
+print("---------------------------------------------------")
+term.setCursorPos(1,1)
+
+sleep(0.7)
+
+print("---------------------------------------------------")
+print("|-------------------------------------------------|")
+print("---------------------------------------------------")
+
+sleep(0.4)
+term.clear()
+term.setCursorPos(1,1)
+sleep(0.1)
+print("---------------------------------------------------")
+print("|-------------------------------------------------|")
+print("---------------------------------------------------")
+term.setCursorPos(1,1)
+
+sleep(1)
+
+
+shell.run("functions")

@@ -1,0 +1,18 @@
+
+logo()
+
+ write("Username: ")
+ local username = read()
+ write("Password: ")
+ local password = read("*")
+ if user.logIn(username, password) then 
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Welcome, "..username)
+  sleep(2)
+  shell.run("mainmenu")
+ else 
+  print("Invalid")
+  sleep(1)
+  shell.run("logon")
+ end

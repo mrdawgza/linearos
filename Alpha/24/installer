@@ -1,0 +1,131 @@
+while true do
+  term.clear()
+  term.setCursorPos(1,1)
+  print("////////////////////////////////////////////////rb3")
+  print("/Old Snorrful//////////////////////////////////////")
+  print("///////////////////////////////////////////////////")
+  print("")
+print("Install")
+print("-------")
+print("You are about to install Old Snorrful Operating")
+print("System! Note that the HTTP API IS ")
+print("required for installation! Also a working")
+print("internet connection is required at the time of")
+print("installation.")
+print("Version: rb3")
+print("Installer version: r1.5")
+print("Do you wish to continue?")
+print("")
+write("Y/N: ")
+
+input = read()
+if input == "Y" then
+        term.clear()
+  term.setCursorPos(1,1)
+  print("////////////////////////////////////////////////rb3")
+  print("/Old Snorrful//////////////////////////////////////")
+  print("///////////////////////////////////////////////////")
+  print("")
+        print("Install")
+        print("-------")
+		print("Installing Old Snorrful operating system!")
+		
+		term.clear()
+		term.setCursorPos(1,1)
+		shell.run("pastebin get jvzqJgf8 startup")
+		
+        term.clear()
+        term.setCursorPos(1,1)
+        shell.run("pastebin get Ruvgwfia mainmenu")
+		
+        term.clear()
+        term.setCursorPos(1,1)
+        shell.run("pastebin get fhfqTHgb preal")
+		
+        term.clear()
+        term.setCursorPos(1,1)
+        shell.run("pastebin get CgWQwsGp options")
+
+        term.clear()
+        term.setCursorPos(1,1)
+        shell.run("pastebin get eyc1LF0L logon")
+
+        term.clear()
+        term.setCursorPos(1,1)
+        shell.run("pastebin get R6Ey8VyJ sleep")
+		
+		term.clear()
+		term.setCursorPos(1,1)
+		shell.run("pastebin get 2fUbCpNG changepass")
+		
+		term.clear()
+		term.setCursorPos(1,1)
+		shell.run("pastebin get LnEsiVb6 register")
+		
+		term.clear()
+		term.setCursorPos(1,1)
+		shell.run("pastebin get GiubPK5X splash")
+		
+		term.clear()
+		term.setCursorPos(1,1)
+		shell.run("pastebin get zh5wMG9Q userList")
+		
+		term.clear()
+		term.setCursorPos(1,1)
+		shell.run("pastebin get VJfDHakr changename")
+		
+		term.clear()
+		term.setCursorPos(1,1)
+		shell.run("pastebin get ADpV5Chx functions")
+      
+while true do
+
+		term.clear()
+  term.setCursorPos(1,1)
+  print("////////////////////////////////////////////////rb3")
+  print("/Old Snorrful//////////////////////////////////////")
+  print("///////////////////////////////////////////////////")
+  print("")
+        print("Install")
+        print("-------")
+		print("Old Snorrful Operating System successfully installed!")
+		print("")
+		print("What do you want to do:")
+		print("S - Shutdown")
+		print("R - Reboot with Snorrful OS")
+		
+		write ("Selection: ")
+		
+		 input = read()
+           if input == "S" then
+           os.shutdown()
+
+         elseif input == "R" then 
+           os.reboot()
+		
+         else
+          term.clear()
+		  term.setCursorPos(1,1)
+		  print("Invalid selection!")
+          sleep(1)
+         end
+end
+
+        		
+        elseif input == "N" then 
+        term.clear()
+		term.setCursorPos(1,1)
+		print("You chose no!")
+		sleep(1)
+		os.reboot()
+		
+
+else
+  term.clear()
+  term.setCursorPos(1,1)
+  print("Invalid selection!")
+  sleep(1)
+ 
+  
+end
+end

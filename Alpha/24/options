@@ -1,0 +1,120 @@
+logo() --Summons the logo.
+
+--[Options menu list]--
+
+print("Options")
+print("-------")
+print("1. Credits")
+print("2. Changelog")
+print("3. Reboot")
+print("4. Account")
+print("5. LUA")
+print("")
+print("6. ^- Go back.")
+print("")
+write("Selection: ")
+
+--[Local functions]--
+
+local function credits()
+  logo()
+  print("Credits")
+  print("-------")
+  print("Old Snorrful lead coder and developer, Optimus")
+  print("  Snorr.")
+  print("")
+  print("ZudoHackz and Mikk809h helped with the menu system.")
+  print("")
+  print("Current Snorrful version: rb2 BETA")
+  print("")
+  print("Press any key to continue")
+  os.pullEvent("key")
+  term.clear()
+  term.setCursorPos(1,1)
+  
+  logo()
+  print("Credits")
+  print("-------")
+  print("If you have a suggestion, you can post it on the")
+  print("  thread on the ComputerCraft forums")
+  print("Full credit to LBPHacker for helping me with the")
+  print("account management system.")
+  print("")
+  print("Press any key to continue.")
+  os.pullEvent("key")
+  sleep(0.2)
+  shell.run("options")
+end
+
+local function accounts()
+  logo()
+  print("Account")
+  print("-------")
+  print("1. Change account name.")
+  print("2. Change account password.")
+  print("")
+  print("3. ^- Go back.")
+  print("")
+  write("Selection: ")
+  input = read()
+
+  if input == "1" then
+    shell.run("changename")
+
+  elseif input == "2" then
+    shell.run("changepass")
+
+  elseif input == "3" then
+    print("")
+    shell.run("options")
+  end
+end  
+
+local function changelog()
+  logo()
+  print("Changelog:")
+  print("----------")
+  print("Latest Version: We have")
+  print("added lots of functions, thus lowering")
+  print("the amount of files needed. We have added")
+  print("an account management system, and made")
+  print("the OS more user friendly and easier to")
+  print("understand")
+  print("")
+  print("Press any key to continue.")
+  os.pullEvent("key")
+  shell.run("options")
+end
+
+--[Options]--
+
+input = read()
+        
+if input == "1" then 
+  credits()
+		
+elseif input == "2" then
+  changelog()
+
+elseif input == "3" then
+  restart()
+		
+elseif input == "4" then
+        accounts()
+
+elseif input == "5" then
+        term.clear()
+		term.setCursorPos(1,1)
+		shell.run("lua")	
+		shell.run("options")
+		
+elseif input == "6" then
+       shell.run("mainmenu")
+        
+else
+        print("Invalid selection!")
+        sleep(1)
+		shell.run("options")
+end
+
+--[options end]--

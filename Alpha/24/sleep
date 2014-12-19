@@ -1,0 +1,46 @@
+logo()
+print("Sleep")
+print("-----")
+print("Enter sleep mode")
+print("1. Lock sleep")
+print("2. Just sleep - Don't lock my account")
+print("")
+print("3. ^- Go back")
+print("")
+write("Selection: ")
+
+input = read()
+if input == "1" then
+        term.clear()
+        term.setCursorPos(1,1)
+        print("Entering sleep mode...")
+        sleep(2)
+        print("Locking your account.")
+        sleep(0.2)
+        term.clear()
+        term.setCursorPos(1,1)
+		user.logOut()
+        print("Press any key to exit sleep mode.")
+        os.pullEvent("key")
+		shell.run("logon")
+
+elseif input == "2" then 
+        term.clear()
+        term.setCursorPos(1,1)
+       print("Entering sleep mode...")
+       sleep(2)
+       term.clear()
+       term.setCursorPos(1,1)
+       print("Press any key to exit sleep mode.")
+       os.pullEvent("key")
+       shell.run("mainmenu")
+       sleep(1)
+
+elseif input == "3" then
+        shell.run("mainmenu")
+		
+else
+        print("Invalid selection!")
+        sleep(1)
+        shell.run("sleep")
+end
