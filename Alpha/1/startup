@@ -1,0 +1,3 @@
+print("Loading Linear OS")
+sleep(0.2)
+shell.run("linear/system/loadOs.ls")

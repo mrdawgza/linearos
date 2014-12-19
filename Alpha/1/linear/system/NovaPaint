@@ -1,0 +1,1173 @@
+
+local ARGS = ARGS
+if not Nova then
+	ARGS = { ... }
+end
+
+if not NovaUI then
+	os.loadAPI "NovaUI"
+end
+local UI = Nova and Nova.app.UI or NovaUI.UIHandler( )
+local running = true
+
+if not Nova then
+	NovaUI.buffer.reset( )
+else
+	UI.scrolls = false
+end
+
+local taskbar = UI:newChild( NovaUI.UIFrame( 1, 1, UI.w, 1 ) )
+taskbar:newChild( NovaUI.UIButton( 1, 1, taskbar.w, 1, "" ) ).bc = colours.grey
+local imagebody = UI:newChild( NovaUI.UIFrame( 1, 2, UI.w, UI.h - 1 ) )
+imagebody.scrolls = false
+
+local background = NovaUI.Image( imagebody.w, imagebody.h )
+background:foreach( function( ) return 32768, 1, " " end )
+imagebody:newChild( NovaUI.UIImage( 1, 1, imagebody.w, imagebody.h, background ) )
+
+local image = imagebody:newChild( NovaUI.UIFrame( 1, 1, 1, 1 ) )
+local imageeventh = image:newChild( NovaUI.UIButton( 1, 1, 1, 1, "" ) )
+imageeventh.bc = 0
+imageeventh.align = false
+
+local keyhandler = imagebody:newChild( NovaUI.UIKeyHandler( ) )
+
+local activedropdown
+local activemenu
+local cx, cy, bc, tc = 1, 1, 1, 1
+
+local menus
+
+local savepath
+local changed = false
+local asterix
+local function saved( )
+	if changed then
+		local result = NovaUI.display.confirm( UI, "You have unsaved changes, would you like to save?" )
+		if result then
+			savefile( true )
+		end
+		if result == nil then
+			return false
+		end
+	end
+	return true
+end
+if Nova then
+	function Nova.app.canClose( reason )
+		if reason == "user" and changed then
+			NovaUI.Thread( function( )
+				if saved( ) then
+					Nova.app.close( )
+				end
+			end )
+			return false
+		end
+		return true
+	end
+end
+local function contentChanged( )
+	if changed then return end
+	changed = true
+	if Nova then
+		Nova.app.setTitle "Paint*"
+	else
+		for k, v in pairs( menus ) do v.x = v.x + 2 end
+		asterix = taskbar:newChild( NovaUI.UIText( 1, 1, 1, 1, "*" ) )
+		asterix.bc = 0
+		asterix.tc = 1
+	end
+end
+local function contentSaved( )
+	if not changed then return end
+	if asterix then asterix:remove( ) end
+	changed = false
+	if Nova then
+		Nova.app.setTitle "Paint"
+	else
+		for k, v in pairs( menus ) do v.x = v.x - 2 end
+	end
+end
+local savefile
+local openfile
+
+local layers = { }
+local layer = 0
+local function newLayer( name, im )
+	table.insert( layers, { image = im, active = true, name = name, element = NovaUI.UIImage( 1, 1, image.w, image.h, im ) } )
+	for i = 1, #layers do
+		layers[i].element:remove( )
+		if layers[i].active then
+			image:newChild( layers[i].element )
+		end
+	end
+	im:resize( image.w, image.h )
+	imageeventh:remove( )
+	image:newChild( imageeventh )
+	layer = layer + 1
+end
+local function setActive( layer, state )
+	layers[layer].active = state == nil and not layers[layer.active] or state or false
+	for i = 1, #layers do
+		layers[i].element:remove( )
+		if layers[i].active then
+			image:newChild( layers[i].element )
+		end
+	end
+	imageeventh:remove( )
+	image:newChild( imageeventh )
+end
+local function resize( w, h )
+	if w == image.w and h == image.h then return end
+	for i = 1, #layers do
+		layers[i].image:resize( w, h, bc, tc, " " )
+		layers[i].element.w = w
+		layers[i].element.h = h
+	end
+	imageeventh.w = w
+	imageeventh.h = h
+	image.w = w
+	image.h = h
+end
+
+function savefile( )
+	if not savepath then
+		savepath = NovaUI.display.response( UI, "Where would you like to save?" )
+		if savepath then
+			savepath = savepath .. ".nim"
+		else
+			return false
+		end
+	end
+	local savestr
+	if #layers > 1 then
+		savestr = ""
+		for i = 1, #layers do
+			savestr = savestr .. "---[" .. layers[i].name .. "]\n" .. layers[i].image:savestr( )
+			if i ~= #layers then savestr = savestr .. "\n" end
+		end
+	elseif layers[1] then
+		savestr = layers[1].image:savestr( )
+	else
+		NovaUI.display.alert( UI, "No layers!" )
+		return
+	end
+	if Nova then
+		local fd = FileData( savestr )
+		fd.meta.type = "nova_image"
+		Nova.filesystem.writefile( savepath, fd )
+	else
+		local h = fs.open( savepath, "w" )
+		if h then
+			h.write( savestr )
+			h.close( )
+		else
+			NovaUI.display.alert( UI, "Could not save file" )
+			return
+		end
+	end
+	contentSaved( )
+end
+local function openlayer( str )
+	if not str then return end
+	local lt = str:sub( 1, str:find "%-%-%-" ) -- returns nil if it can't find it, causing it to sub to the end
+	local remaining = str:find "%-%-%-" and str:sub( str:find "%-%-%-" + 3 ) or false
+	local name = "Un-named Layer"
+	if lt:sub( 1, 1 ) == "[" and lt:sub( 2 ):find "]" then
+		name = lt:sub( 2, lt:sub( 2 ):find "]" )
+		lt = lt:sub( lt:sub( 2 ):find "]" + 2 )
+		if lt:sub( 1, 1 ) == "\n" then lt = lt:sub( 2 ) end
+	end
+	local im = NovaUI.Image( )
+	im:loadstr( lt )
+	if remaining and remaining:sub( 1, 1 ) == "\n" then remaining = remaining:sub( 2 ) end
+	return name, im, remaining
+end
+function openfile( path )
+	savepath = path
+	contentSaved( )
+	local content
+	if Nova then
+		local filedata, err = Nova.filesystem.readfile( path )
+		if filedata then content = filedata.content else NovaUI.display.alert( UI, err ) return end
+	else
+		local h = fs.open( path, "r" )
+		if h then content = h.readAll( ) h.close( ) else NovaUI.display.alert( UI, "could not open file" ) return end
+		if content:find "^--%[%[.-%]%]" then
+			content = content:gsub( "^--%[%[.-%]%]", "", 1 )
+		end
+	end
+	for i = #layers, 1, -1 do
+		layers[i].element:remove( )
+	end
+	layers = { }
+	image.x, image.y = 1, 1
+	if content:sub( 1, 3 ) == "---" then
+		local name, im, content = openlayer( content:sub( 4 ) )
+		while name do
+			resize( im:getSize( ) )
+			newLayer( name, im )
+			name, im, content = openlayer( content )
+		end
+	else
+		local im = NovaUI.Image( ):loadstr( content )
+		resize( im:getSize( ) )
+		newLayer( "Layer 1", im )
+	end
+	layer = 1
+	imageeventh:remove( )
+	image:newChild( imageeventh )
+	image:centre( )
+end
+
+local function copy( )
+	local im = layers[layer]
+	NovaUI.clipboard.set( "image", im.image )
+end
+local function cut( )
+	if #layers > 1 then
+		local im = layers[layer]
+		NovaUI.clipboard.set( "image", im.image )
+		im.element:remove( )
+		table.remove( layers, layer )
+		layer = math.max( layer - 1, 1 )
+		contentChanged( )
+	end
+end
+local function paste( )
+	local mode, data = NovaUI.clipboard.get( )
+	if mode ~= "image" then
+		return
+	end
+	local im = NovaUI.Image( image.w, image.h )
+	im:foreach( function( x, y )
+		local b, t, char = data:getPixel( x, y )
+		if b then return b, t, char end
+		return bc, tc, " "
+	end )
+	newLayer( "Pasted layer", im )
+	contentChanged( )
+end
+
+local view = {
+	colours = { active = true, element = UI:newChild( NovaUI.UIFrame( UI.w - 14, 2, 15, 9 ) ) };
+	layers = { active = true, element = UI:newChild( NovaUI.UIFrame( UI.w - 14, 11, 15, 10 ) ) };
+	tools = { active = true, element = UI:newChild( NovaUI.UIFrame( 1, 2, 15, 9 ) ) };
+}
+local title = view.colours.element:newChild( NovaUI.UIButton( 1, 1, 14, 1, "Colour" ) )
+title.bc = colours.grey
+title.tc = colours.white
+function title:onDrag( _, _, cx, cy )
+	view.colours.element.x = view.colours.element.x + cx
+	view.colours.element.y = view.colours.element.y + cy
+end
+local close = view.colours.element:newChild( NovaUI.UIButton( 15, 1, 1, 1, "x" ) )
+close.bc = colours.grey
+close.tc = colours.yellow
+function close:onClick( )
+	view.colours.active = false
+	view.colours.element:remove( )
+end
+local x, y = 1, 1
+for i = 0, 15 do
+	local button = view.colours.element:newChild( NovaUI.UIButton( x * 3 + 1, y * 2, 3, 2, "" ) )
+	button.bc = 2 ^ i
+	function button:onClick( _, _, button )
+		if button == 1 then bc = 2 ^ i
+		elseif button == 2 then tc = 2 ^ i
+		end
+	end
+	x = x + 1
+	if x > 4 then x = 1 y = y + 1 end
+end
+view.colours.element:newChild( NovaUI.UIButton( 1, 2, 3, 4, function( self )
+	self.bc = bc
+	return ""
+end ) )
+view.colours.element:newChild( NovaUI.UIButton( 1, 6, 3, 4, function( self )
+	self.bc = tc
+	return ""
+end ) )
+
+local title = view.layers.element:newChild( NovaUI.UIButton( 1, 1, 14, 1, "Layers" ) )
+title.bc = colours.grey
+title.tc = colours.white
+function title:onDrag( _, _, cx, cy )
+	view.layers.element.x = view.layers.element.x + cx
+	view.layers.element.y = view.layers.element.y + cy
+end
+local close = view.layers.element:newChild( NovaUI.UIButton( 15, 1, 1, 1, "x" ) )
+close.bc = colours.grey
+close.tc = colours.yellow
+function close:onClick( )
+	view.layers.active = false
+	view.layers.element:remove( )
+end
+local current = view.layers.element:newChild( NovaUI.UIText( 1, 2, 15, 1, function( )
+	return layers[layer] and layers[layer].name or ""
+end ) )
+current.bc = colours.grey
+current.tc = colours.white
+local layerlist = view.layers.element:newChild( NovaUI.UIFrame( 1, 3, 15, 8 ) )
+
+NovaUI.Thread( function( )
+	while true do
+		layerlist:clearChildren( )
+		for i = 1, #layers do
+			local button = layerlist:newChild( NovaUI.UIButton( 3, i, 15, 1, layers[i].name ) )
+			button.bc = colours.lightGrey
+			button.tc = colours.black
+			function button:onClick( x, y, b )
+				if b == 1 then
+					layer = i
+				else
+					local close = UI:newChild( NovaUI.UIButton( 1, 1, UI.w, UI.h, "" ) )
+					close.bc, close.align = 0, false
+					local f = UI:newChild( NovaUI.UIFrame( view.layers.element.x + view.layers.element.w, view.layers.element.y + i + layerlist.cy + 1, 10, 5 ) )
+					NovaUI.display.menu( f, {
+						width = 11, height = 5, spacing = false, shadow = colours.grey;
+						{ type = "button", name = "delete", onClick = function( )
+							if #layers > 1 then
+								table.remove( layers, layer )
+								layer = math.max( layer - 1, 1 )
+								setActive( layer, layers[layer].active ) -- update
+								close:remove( )
+								f:remove( )
+								contentChanged( )
+							else
+								NovaUI.display.alert( UI, "Cannot delete last layer" )
+								close:remove( )
+								f:remove( )
+							end
+						end };
+						{ type = "button", name = layers[i] and layers[i].active and "hide" or "show", onClick = function( )
+							if layers[i] then
+								setActive( i, not layers[i].active ) -- update
+								close:remove( )
+								f:remove( )
+							end
+						end };
+						{ type = "button", name = "rename", onClick = function( )
+							NovaUI.Thread( function( )
+								close:remove( )
+								f:remove( )
+								local r = NovaUI.display.response( UI, "New layer name" )
+								if r then
+									layers[i].name = r
+									contentChanged( )
+								end
+							end )
+						end };
+						{ type = "button", name = "merge up", onClick = function( )
+							close:remove( )
+							f:remove( )
+							if layers[i - 1] then
+								local im = layers[i-1].image
+								local im2 = layers[i].image
+								im:foreach( function( x, y, bc, tc, char )
+									local b, t, c = im2:getPixel( x, y )
+									if b == 0 then
+										b = bc
+									end
+									if t == 0 or c == "" then
+										t, c = tc, char
+									end
+									return b, t, c
+								end )
+								layers[i].element:remove( )
+								table.remove( layers, i )
+								if layer >= i then
+									layer = layer - 1
+								end
+								contentChanged( )
+							else
+								NovaUI.display.alert( UI, "Nothing to merge to (top layer)" )
+							end
+						end };
+					} )
+					if f.x + f.w > UI.w then
+						f.x = UI.w - f.w + 1
+					end
+					if f.y + f.h > UI.h then
+						f.y = UI.h - f.h + 1
+					end
+					function close:onClick( )
+						close:remove( )
+						f:remove( )
+					end
+				end
+			end
+			local active = layerlist:newChild( NovaUI.UIButton( 1, i, 2, 1, layers[i].active and " @" or " O" ) )
+			active.bc = colours.lightGrey
+			active.tc = colours.black
+			function active:onClick( )
+				setActive( i, not layers[i].active )
+			end
+		end
+		coroutine.yield( )
+	end
+end )
+
+local title = view.tools.element:newChild( NovaUI.UIButton( 1, 1, 14, 1, "Tools" ) )
+title.bc = colours.grey
+title.tc = colours.white
+function title:onDrag( _, _, cx, cy )
+	view.tools.element.x = view.tools.element.x + cx
+	view.tools.element.y = view.tools.element.y + cy
+end
+local close = view.tools.element:newChild( NovaUI.UIButton( 15, 1, 1, 1, "x" ) )
+close.bc = colours.grey
+close.tc = colours.yellow
+function close:onClick( )
+	view.tools.active = false
+	view.tools.element:remove( )
+end
+
+local t = {
+	{ name = "Brush", tool = "brush" };
+	{ name = "Rectangle", tool = "rectangle" };
+	{ name = "Ellipse", tool = "ellipse" };
+	{ name = "Line", tool = "line" };
+	{ name = "Fill", tool = "fill" };
+	{ name = "Pick colour", tool = "pick" };
+	{ name = "Move", tool = "move" };
+	{ name = "Eraser", tool = "eraser" };
+}
+
+local tool = { name = "brush", size = 1, data = { } }
+local function setTool( name )
+	tool.name = name
+	tool.data = { }
+end
+
+for i = 1, #t do
+	local b = view.tools.element:newChild( NovaUI.UIButton( 1, i + 1, 15, 1, function( self )
+		if tool.name == t[i].tool then
+			self.tc = colours.white
+		else
+			self.tc = colours.grey
+		end
+		return t[i].name
+	end ) )
+	b.bc = colours.lightGrey
+	b.align = false
+	function b:onClick( )
+		setTool( t[i].tool )
+	end
+end
+
+local tools = { }
+
+tools.brush = { }
+function tools.brush.onClick( x, y )
+	cx = x
+	cy = y
+	layers[layer].image:pixel( x, y, bc, tc, " " )
+	if tool.size > 1 then
+		local r = tool.size ^ 2
+		for xx = x - tool.size + 1, x + tool.size - 1 do
+			for yy = y - tool.size + 1, y + tool.size - 1 do
+				if ( xx - x ) ^ 2 + ( yy - y ) ^ 2 < r then
+					layers[layer].image:pixel( xx, yy, bc, tc, " " )
+				end
+			end
+		end
+	end
+	cx, cy = x, y
+	contentChanged( )
+end
+tools.brush.onDrag = tools.brush.onClick
+function tools.brush.onChar( char )
+	layers[layer].image:pixel( cx, cy, bc, tc, char )
+	cx = cx + 1
+	contentChanged( )
+end
+
+tools.rectangle = { }
+function tools.rectangle.onClick( x, y )
+	tool.data.x = x
+	tool.data.y = y
+	tool.data.x2 = x
+	tool.data.y2 = y
+	tool.data.button = 1
+	tool.data.layer = layers[layer]
+	tool.data.image = NovaUI.Image( image.w, image.h )
+	tool.data.image:foreach( function( x, y ) return tool.data.layer.image:getPixel( x, y ) end )
+	tool.data.layer.image:pixel( x, y, bc, 1, " " )
+	contentChanged( )
+end
+local function drawRectangle( im, x, y, x2, y2, char, button )
+	local minx, miny, maxx, maxy = math.min( x, x2 ), math.min( y, y2 ), math.max( x, x2 ), math.max( y, y2 )
+	if button == 1 then
+		for x = minx, maxx do
+			for y = miny, maxy do
+				im:pixel( x, y, bc, 1, char )
+			end
+		end
+	else
+		for x = minx, maxx do
+			im:pixel( x, miny, bc, 1, char )
+			im:pixel( x, maxy, bc, 1, char )
+		end
+		for y = miny + 1, maxy - 1 do
+			im:pixel( minx, y, bc, 1, char )
+			im:pixel( maxx, y, bc, 1, char )
+		end
+	end
+	contentChanged( )
+end
+function tools.rectangle.onDrag( x, y, _, _, button )
+	local im = tool.data.layer.image
+	local imc = tool.data.image
+	im:foreach( function( x, y )
+		return imc:getPixel( x, y )
+	end )
+	tool.data.x2 = x
+	tool.data.y2 = y
+	tool.data.button = button
+	drawRectangle( im, x, y, tool.data.x, tool.data.y, " ", button )
+end
+function tools.rectangle.onChar( char )
+	if not tool.data.x then return end
+	drawRectangle( im, tool.data.x2, tool.data.y2, tool.data.x, tool.data.y, char, tool.data.button )
+end
+function tools.rectangle.onKey( key )
+	if not tool.data.x then return end
+	if key == keys.backspace then
+		local im = tool.data.layer.image
+		local imc = tool.data.image
+		im:foreach( function( x, y )
+			return imc:getPixel( x, y )
+		end )
+	end
+end
+
+tools.ellipse = { }
+function tools.ellipse.onClick( x, y )
+	tool.data.x = x
+	tool.data.y = y
+	tool.data.x2 = x
+	tool.data.y2 = y
+	tool.data.layer = layers[layer]
+	tool.data.image = NovaUI.Image( image.w, image.h )
+	tool.data.image:foreach( function( x, y ) return tool.data.layer.image:getPixel( x, y ) end )
+end
+local function drawEllipse( im, originX, originY, w, h, char )
+	local hh = h * h
+	local ww = w * w
+	local hhww = hh*ww
+	local x0 = w
+	local dx = 0
+	for x = -w, w do
+		im:pixel(originX + x, originY, bc, 1, char)
+	end
+	for y = 1, h do
+		local x1 = x0 - (dx - 1)
+		for i = x1, 0, -1 do
+			if (x1*x1*hh + y*y*ww <= hhww) then
+				break
+			end
+			x1 = x1 - 1
+		end
+		dx = x0 - x1
+		x0 = x1
+		for x = -x0, x0 do
+			im:pixel(originX + x, originY - y, bc, 1, char)
+			im:pixel(originX + x, originY + y, bc, 1, char)
+		end
+	end
+	contentChanged( )
+end
+function tools.ellipse.onDrag( x, y, _, _, button )
+	local im = tool.data.layer.image
+	local imc = tool.data.image
+	im:foreach( function( x, y )
+		return imc:getPixel( x, y )
+	end )
+	local minx, miny, maxx, maxy = math.min( x, tool.data.x ), math.min( y, tool.data.y ), math.max( x, tool.data.x ), math.max( y, tool.data.y )
+	tool.data.x2 = x
+	tool.data.y2 = y
+	local originX = minx + math.floor( ( maxx - minx ) / 2 + .5 )
+	local originY = miny + math.floor( ( maxy - miny ) / 2 + .5 )
+	drawEllipse( im, originX, originY, maxx - originX + 1, maxy - originY + 1, " " )
+end
+function tools.ellipse.onChar( char )
+	if tool.data.x then
+		local im = tool.data.layer.image
+		local imc = tool.data.image
+		im:foreach( function( x, y )
+			return imc:getPixel( x, y )
+		end )
+		local minx, miny, maxx, maxy = math.min( tool.data.x2, tool.data.x ), math.min( tool.data.y2, tool.data.y ), math.max( tool.data.x2, tool.data.x ), math.max( tool.data.y2, tool.data.y )
+		local originX = minx + math.floor( ( maxx - minx ) / 2 + .5 )
+		local originY = miny + math.floor( ( maxy - miny ) / 2 + .5 )
+		drawEllipse( im, originX, originY, maxx - originX + 1, maxy - originY + 1, char )
+	end
+end
+
+tools.line = { }
+function tools.line.onClick( x, y )
+	tool.data.x = x
+	tool.data.y = y
+	tool.data.x2 = x
+	tool.data.y2 = y
+	tool.data.layer = layers[layer]
+	tool.data.image = NovaUI.Image( image.w, image.h )
+	tool.data.image:foreach( function( x, y ) return tool.data.layer.image:getPixel( x, y ) end )
+	tool.data.layer.image:pixel( x, y, bc, tc, " " )
+	contentChanged( )
+end
+local function drawLine( im, char )
+	local x1, y1 = tool.data.x, tool.data.y
+	local x2, y2 = tool.data.x2, tool.data.y2
+	if math.abs( x2 - x1 ) > math.abs( y2 - y1 ) then
+		if x2 < x1 then
+			x1, x2 = x2, x1
+			y1, y2 = y2, y1
+		end
+		local g = ( y2 - y1 ) / ( x2 - x1 )
+		for x = x1, x2 do
+			local y = math.floor( y1 + g * ( x - x1 ) + 0.5 )
+			im:pixel( x, y, bc, tc, char )
+		end
+	else
+		if y2 < y1 then
+			x1, x2 = x2, x1
+			y1, y2 = y2, y1
+		end
+		local g = ( x2 - x1 ) / ( y2 - y1 )
+		for y = y1, y2 do
+			local x = math.floor( x1 + g * ( y - y1 ) + 0.5 )
+			im:pixel( x, y, bc, tc, char )
+		end
+	end
+	contentChanged( )
+end
+function tools.line.onDrag( x, y, _, _, button )
+	local im = tool.data.layer.image
+	local imc = tool.data.image
+	im:foreach( function( x, y )
+		return imc:getPixel( x, y )
+	end )
+	tool.data.x2 = x
+	tool.data.y2 = y
+	drawLine( im, " " )
+end
+function tools.line.onKey( key )
+	if not tool.data.x then return end
+	if key == keys.backspace then
+		local im = tool.data.layer.image
+		local imc = tool.data.image
+		im:foreach( function( x, y )
+			return imc:getPixel( x, y )
+		end )
+	end
+end
+function tools.line.onChar( char )
+	if not tool.data.x then return end
+	drawLine( tool.data.layer.image, char )
+end
+
+tools.fill = { }
+local function fillarea( x, y, save )
+	local im = layers[layer].image
+	local _bc = im:getPixel( x, y )
+	if _bc then
+		local pixels = { }
+		local function pixel( x, y )
+			if pixels[x] and pixels[x][y] then
+				return
+			end
+			pixels[x] = pixels[x] or { }
+			pixels[x][y] = true
+			local b, t, c = im:getPixel( x, y )
+			if b == _bc then
+				im:pixel( x, y, bc, tc, save and c or " " )
+				pixel( x - 1, y )
+				pixel( x + 1, y )
+				pixel( x, y - 1 )
+				pixel( x, y + 1 )
+			end
+		end
+		pixel( x, y )
+		contentChanged( )
+	end
+end
+function tools.fill.onClick( x, y, button )
+	NovaUI.Thread( function( )
+		fillarea( x, y, button == 2 )
+	end )
+end
+
+tools.pick = { }
+function tools.pick.onClick( x, y, button )
+	local b, t = layers[layer].image:getPixel( x, y )
+	bc = button == 1 and b or t
+	tc = button == 1 and t or b
+end
+
+tools.move = { }
+function tools.move.onDrag( _, _, cx, cy )
+	image.x = image.x + cx
+	image.y = image.y + cy
+end
+tools.eraser = { }
+function tools.eraser.onClick( x, y )
+	layers[layer].image:pixel( x, y, 0, 0, "" )
+	if tool.size > 1 then
+		local r = tool.size ^ 2
+		for xx = x - tool.size + 1, x + tool.size - 1 do
+			for yy = y - tool.size + 1, y + tool.size - 1 do
+				if ( xx - x ) ^ 2 + ( yy - y ) ^ 2 < r then
+					layers[layer].image:pixel( xx, yy, 0, 0, "" )
+				end
+			end
+		end
+	end
+	cx, cy = x, y
+	contentChanged( )
+end
+tools.eraser.onDrag = tools.eraser.onClick
+
+menus = { }
+menus.file = taskbar:newChild( NovaUI.UIButton( 1, 1, 4, 1, "File" ) )
+menus.edit = taskbar:newChild( NovaUI.UIButton( 7, 1, 4, 1, "Edit" ) )
+menus.view = taskbar:newChild( NovaUI.UIButton( 13, 1, 4, 1, "View" ) )
+menus.tool = taskbar:newChild( NovaUI.UIButton( 19, 1, 4, 1, "Tool" ) )
+menus.image = taskbar:newChild( NovaUI.UIButton( 25, 1, 5, 1, "Image" ) )
+local menuoptions = { }
+
+menuoptions.file = {
+	width = 10, height = 8, spacing = false, shadow = colours.grey;
+	{ type = "button", name = "New", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		NovaUI.Thread( function( )
+			if saved( ) then
+				for i = 1, #layers do
+					layers[i].element:remove( )
+				end
+				local im = NovaUI.Image( 5, 5 )
+				im:foreach( function( ) return 1, 1, " " end )
+				resize( 5, 5 )
+				layers = { { image = im, name = "Layer 1", element = image:newChild( NovaUI.UIImage( 1, 1, 5, 5, im ) ) } }
+				layer = 1
+				imageeventh:remove( )
+				image:newChild( imageeventh )
+				contentChanged( )
+			end
+		end )
+	end };
+	{ type = "button", name = "Open", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		NovaUI.Thread( function( )
+			if saved( ) then
+				local path = NovaUI.display.response( UI, "Path to open from" )
+				if path then
+					openfile( path .. ".nim" )
+				end
+			end
+		end )
+	end };
+	"rule";
+	{ type = "button", name = "Save", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		NovaUI.Thread( function( )
+			savefile( )
+		end ).onException = function( _, err ) term.setTextColour( colours.black ) print( err ) running = false end
+	end };
+	{ type = "button", name = "Save As", onClick = function( )
+		activedropdown:remove( )
+		NovaUI.Thread( function( )
+			local path = NovaUI.display.response( UI, "Path to save as" )
+			if path then
+				savepath = path .. ".nim"
+				savefile( )
+			end
+		end )
+	end };
+	"rule";
+	{ type = "button", name = "Exit", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		NovaUI.Thread( function( )
+			if saved( ) then
+				if Nova then
+					Nova.app.close( )
+				else
+					running = false
+				end
+			end
+		end )
+	end };
+}
+menuoptions.edit = {
+	width = 14, height = 5, spacing = false, shadow = colours.grey;
+	{ type = "button", name = "Copy layer", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		copy( )
+	end };
+	{ type = "button", name = "Cut layer", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		cut( )
+	end };
+	"rule";
+	{ type = "button", name = "Paste layer", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		paste( )
+	end };
+}
+menuoptions.view = {
+	width = 10, height = 4, spacing = false, shadow = colours.grey;
+	{ type = "button", name = "Layers", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		if view.layers.active then view.layers.element:remove( ) else UI:newChild( view.layers.element ) end
+		view.layers.active = not view.layers.active
+	end };
+	{ type = "button", name = "Colours", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		if view.colours.active then view.colours.element:remove( ) else UI:newChild( view.colours.element ) end
+		view.colours.active = not view.colours.active
+	end };
+	{ type = "button", name = "Tools", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		if view.tools.active then view.tools.element:remove( ) else UI:newChild( view.tools.element ) end
+		view.tools.active = not view.tools.active
+	end };
+}
+menuoptions.tool = {
+	width = 15, height = 13, spacing = false, shadow = colours.grey;
+	{ type = "display", name = "", getDisplay = function( )
+		return tool.name
+	end };
+	"rule";
+	{ type = "button", name = "Brush", onClick = function( )
+		activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		setTool "brush" end };
+	{ type = "button", name = "Rectangle", onClick = function( )
+		activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		setTool "rectangle" end };
+	{ type = "button", name = "Ellipse", onClick = function( )
+		activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		setTool "ellipse" end };
+	{ type = "button", name = "Line", onClick = function( )
+		activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		setTool "line" end };
+	{ type = "button", name = "Fill", onClick = function( )
+		activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		setTool "fill" end };
+	{ type = "button", name = "Pick colour", onClick = function( )
+		activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		setTool "pick" end };
+	{ type = "button", name = "Move", onClick = function( )
+		activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		setTool "move" end };
+	{ type = "button", name = "Eraser", onClick = function( )
+		activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		setTool "eraser" end };
+	"rule";
+	{ type = "menu", name = "size", options = {
+		shadow = colours.grey, width = 4, height = 6, spacing = false;
+		{ type = "button", name = "1", onClick = function( ) activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end tool.size = 1 end };
+		{ type = "button", name = "2", onClick = function( ) activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end tool.size = 2 end }; { type = "button", name = "3", onClick = function( ) activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end tool.size = 3 end };
+		{ type = "button", name = "4", onClick = function( ) activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end tool.size = 4 end };
+		{ type = "button", name = "5", onClick = function( ) activedropdown:remove( ) if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end tool.size = 5 end };
+	} }
+}
+menuoptions.image = {
+	width = 18, height = 11, spacing = false, shadow = colours.grey;
+	{ type = "menu", name = "Background style", options = {
+		width = 10, height = 5, spacing = false, shadow = colours.grey;
+		{ type = "button", name = "Checker", onClick = function( )
+			activedropdown:remove( )
+			if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+			background:foreach( function( x, y )
+				x = math.floor( ( x + 1 ) / 2 )
+				y = math.floor( ( y + 1 ) / 2 )
+				local xm, ym = x % 2 == 1, y % 2 == 1
+				if ( xm and ym ) or ( not xm and not ym ) then
+					return colours.lightGrey, 1, " "
+				end
+				return 1, colours.lightGrey, " "
+			end )
+		end };
+		{ type = "button", name = "White", onClick = function( )
+			activedropdown:remove( )
+			if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+			background:foreach( function( x, y )
+				return 1, 1, " "
+			end )
+		end };
+		{ type = "button", name = "Black", onClick = function( )
+			activedropdown:remove( )
+			if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+			background:foreach( function( x, y )
+				return 32768, 1, " "
+			end )
+		end };
+		{ type = "button", name = "Lines", onClick = function( )
+			activedropdown:remove( )
+			if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+			background:foreach( function( x, y )
+				if x % 2 == 1 or y % 2 == 1 then
+					return 1, colours.lightGrey, " "
+				end
+				return colours.lightGrey, 1, " "
+			end )
+		end };
+	} };
+	"rule";
+	{ type = "button", name = "Resize", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		NovaUI.markup.load( [[
+			<frame id:main width:expand height:expand>
+				<script name:misc>
+					function close( )
+						document.getElementById( "main" ):remove( )
+					end
+					local w, h = document.getElementById "width", document.getElementById "height"
+					function w:onEnter( )
+						h:focusOn( )
+					end
+					function finish( )
+						if tonumber( w.text ) and tonumber( h.text ) then
+							resize( tonumber( w.text ), tonumber( h.text ) )
+							contentChanged( )
+							close( )
+						else
+							close( )
+							NovaUI.display.alert( UI, "Please enter numbers" )
+						end
+					end
+					function h:onEnter( )
+						finish( )
+					end
+					w:focusOn( )
+					document.getElementById( "close" ).align = false
+					w.text = tostring( image.w )
+					h.text = tostring( image.h )
+				</script>
+				<button id:close bc:transparent width:expand height:expand onClick:"close()"></button>
+				<frame width:expand height:10 y:centre>
+					<button width:expand height:expand bc:blue></button>
+					<text x:centre y:2 width:auto bc:transparent tc:white>Resize</text>
+					<frame x:centre y:5 width:30>
+						<text bc:transparent tc:white width:auto>Width: </text>
+						<input id:width bc:lightBlue fbc:lightBlue align:right width:5>
+						<text align:right spacing:5 bc:transparent tc:white width:auto>Height: </text>
+						<input id:height bc:lightBlue fbc:lightBlue align:right width:5>
+					</frame>
+					<frame x:centre y:7 width:34 height:3>
+						<button bc:lightBlue height:3 width:16 spacing:1 onClick:"finish()">Done</button>
+						<button align:right bc:lightBlue height:3 width:16 spacing:2 onClick:"close()">Cancel</button>
+					</frame>
+				</frame>
+			</frame>
+		]], UI, setmetatable( { contentChanged = contentChanged, image = image, resize = resize, UI = UI }, { __index = getfenv( ) } ) )
+	end };
+	{ type = "display", name = "current: ", getDisplay = function( )
+		return image.w .. "x" .. image.h
+	end };
+	"rule";
+	{ type = "menu", name = "Effects", options = {
+		width = 12, height = 4, spacing = false, shadow = colours.grey;
+		{ type = "button", name = "Greyscale", onClick = function( )
+			activedropdown:remove( )
+			if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+			local c = {
+				[0] = 4, [colours.white] = 0, [colours.orange] = 1, [colours.magenta] = 1, [colours.lightBlue] = 1;
+				[colours.yellow] = 0, [colours.lime] = 1, [colours.pink] = 0, [colours.grey] = 2, [colours.lightGrey] = 1;
+				[colours.cyan] = 2, [colours.purple] = 2, [colours.blue] = 3, [colours.brown] = 3, [colours.green] = 2;
+				[colours.red] = 2, [colours.black] = 3;
+			}
+			local d = { [0] = colours.white, [1] = colours.lightGrey, [2] = colours.grey, [3] = colours.black, [4] = 0 }
+			layers[layer].image:foreach( function( x, y, bc, tc, char )
+				return d[c[bc]], d[c[tc]], char
+			end )
+			contentChanged( )
+		end };
+		{ type = "button", name = "Inverse", onClick = function( )
+			activedropdown:remove( )
+			if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+			NovaUI.display.alert( UI, "Not yet implemented!" )
+		end };
+		{ type = "button", name = "Sepia", onClick = function( )
+			activedropdown:remove( )
+			if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+			local c = {
+				[0] = 4, [colours.white] = 0, [colours.orange] = 2, [colours.magenta] = 1, [colours.lightBlue] = 1;
+				[colours.yellow] = 1, [colours.lime] = 1, [colours.pink] = 0, [colours.grey] = 2, [colours.lightGrey] = 1;
+				[colours.cyan] = 2, [colours.purple] = 2, [colours.blue] = 3, [colours.brown] = 3, [colours.green] = 2;
+				[colours.red] = 2, [colours.black] = 3;
+			}
+			local d = { [0] = colours.white, [1] = colours.yellow, [2] = colours.orange, [3] = colours.red, [4] = 0 }
+			layers[layer].image:foreach( function( x, y, bc, tc, char )
+				return d[c[bc]], d[c[tc]], char
+			end )
+			contentChanged( )
+		end };
+	} };
+	"rule";
+	{ type = "button", name = "New layer", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		NovaUI.Thread( function( )
+			local r = NovaUI.display.response( UI, "New layer name" )
+			if r then
+				local im = NovaUI.Image( image.w, image.h )
+				im:foreach( function( ) return bc, tc, " " end )
+				newLayer( r, im )
+				contentChanged( )
+			end
+		end )
+	end };
+	{ type = "button", name = "Remove layer", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		if #layers > 1 then
+			table.remove( layers, layer )
+			layer = math.max( layer - 1, 1 )
+			setActive( layer, layers[layer].active ) -- update
+			contentChanged( )
+		else
+			NovaUI.display.alert( UI, "Cannot delete last layer" )
+		end
+	end };
+	{ type = "button", name = "Rename layer", onClick = function( )
+		activedropdown:remove( )
+		if activemenu then activemenu.tc = colours.lightBlue activemenu = nil end
+		NovaUI.Thread( function( )
+			local r = NovaUI.display.response( UI, "New layer name" )
+			if r then
+				layers[layer].name = r
+				contentChanged( )
+			end
+		end )
+	end };
+}
+
+function imageeventh:onClick( x, y, button )
+	if tools[tool.name].onClick then
+		tools[tool.name].onClick( x, y, button )
+	end
+end
+function imageeventh:onDrag( rx, ry, cx, cy, button )
+	if tools[tool.name].onDrag then
+		tools[tool.name].onDrag( rx, ry, cx, cy, button )
+	end
+end
+
+function keyhandler:onKey( key, lastkey )
+	if lastkey == 29 then
+		if key == keys.s then
+			NovaUI.Thread( function( )
+				savefile( )
+			end )
+		elseif key == keys.o then
+			NovaUI.Thread( function( )
+				if saved( ) then
+					local response = NovaUI.display.response( UI, "Path to open from" )
+					if response then
+						openfile( response .. ".nim" )
+					end
+				end
+			end )
+		elseif key == keys.c then
+			copy( )
+		elseif key == keys.x then
+			cut( )
+		elseif key == keys.b then
+			paste( )
+		end
+	else
+		if tools[tool.name].onKey then
+			tools[tool.name].onKey( key )
+		end
+	end
+end
+function keyhandler:onChar( char )
+	if tools[tool.name].onChar then
+		tools[tool.name].onChar( char )
+	end
+end
+
+for k, v in pairs( menus ) do
+	v.bc, v.tc = 0, colours.lightBlue
+	function v:onClick( )
+		if activemenu == v then activedropdown:remove( ) activemenu.tc = colours.lightBlue activemenu = nil return end
+		activemenu = v
+		v.tc = colours.white
+		activedropdown = UI:newChild( NovaUI.UIFrame( 1, 1, UI.w, UI.h ) )
+		local close = activedropdown:newChild( NovaUI.UIButton( 1, 1, UI.w, UI.h, "" ) )
+		close.bc, close.align = 0, false
+		function close:onClick( x, y, button )
+			v.tc = colours.lightBlue
+			activedropdown:remove( )
+			if y == 1 then if Nova then os.queueEvent( "mouse_click", button, x, 2 ) else os.queueEvent( "mouse_click", button, x, 1 ) end else activemenu = nil end
+		end
+		local miniframe = activedropdown:newChild( NovaUI.UIFrame( v.x, v.y + 1, 0, 0 ) )
+		NovaUI.display.menu( miniframe, menuoptions[k] )
+	end
+end
+
+if ARGS[1] then
+	openfile( ARGS[1] )
+else
+	image.w = 15
+	image.h = 10
+	imageeventh.w = 15
+	imageeventh.h = 10
+	local im = NovaUI.Image( 15, 10 )
+	im:foreach( function( ) return 1, 1, " " end )
+	newLayer( "Layer 1", im )
+	image:centre( )
+end
+
+if not Nova then
+	local function update( event, dt )
+	    if event[1] ~= "update" then
+	    	NovaUI.Thread.update( event )
+	        UI:event( event )
+	    else
+	    	NovaUI.Thread.update { "update", dt }
+	        UI:update( event[2] )
+	        UI:draw( )
+	        NovaUI.buffer.drawChanges( )
+	        NovaUI.buffer.clear( )
+	    end
+	end
+
+	local ok, err = pcall( function( )
+	    local time = os.clock( )
+	    local timer = os.startTimer( 0 )
+	    os.queueEvent "start"
+	    while running do
+	        local ev = { coroutine.yield( ) }
+	        local dt = os.clock( ) - time
+	        time = os.clock( )
+	        if ev[1] == "timer" and ev[2] == timer then
+	            update( { "update" }, dt )
+	            timer = os.startTimer( 0.05 )
+	        else
+	            update( ev, dt )
+	        end
+	    end
+	end )
+	if not ok then
+	    print( err )
+	end
+	term.setBackgroundColour( colours.black )
+	term.scroll( 1 )
+	term.setCursorPos( 1, ({ term.getSize( ) })[2] )
+	term.setTextColour( colours.blue )
+	print "Thank you for using Nova Paint"
+end
